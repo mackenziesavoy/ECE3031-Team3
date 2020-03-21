@@ -1,0 +1,6 @@
+<VisualMicro>
+  <Program Name="atmega328ptesterino2" Ext=".ino" Location="C:\Users\macke\Desktop\School\ECE3031\ECE3031-Team3\ATMega238PB Test\atmega328ptesterino2">
+    <Debug BandWidthThrottleEnabled="0" />
+    <Compile ReportDetailedMemoryUsage="1" />
+  </Program>
+</VisualMicro>
