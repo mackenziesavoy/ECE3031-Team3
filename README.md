@@ -5,7 +5,10 @@ So far this repositor includes:
 
 * ATmega328PB High PWM generation test 
 
-##UML Diagram
+![alt text][uml]
+
+[uml]:
+https://github.com/mackenziesavoy/ECE3031-Team3/blob/master/umldiamotor.png
 
 __Other useful resources__
 
