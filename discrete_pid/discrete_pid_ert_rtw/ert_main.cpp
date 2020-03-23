@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'discrete_pid'.
 //
-// Model version                  : 1.16
+// Model version                  : 1.22
 // Simulink Coder version         : 9.0 (R2018b) 24-May-2018
-// C/C++ source code generated on : Sat Mar 14 15:23:36 2020
+// C/C++ source code generated on : Mon Mar 23 19:10:56 2020
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: Atmel->AVR (8-bit)
@@ -83,7 +83,7 @@ int_T main(int_T argc, const char *argv[])
   rtObj.initialize();
 
   // Attach rt_OneStep to a timer or interrupt service routine with
-  //  period 0.2 seconds (the model's base sample time) here.  The
+  //  period 5.0E-7 seconds (the model's base sample time) here.  The
   //  call syntax for rt_OneStep is
   //
   //   rt_OneStep();

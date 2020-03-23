@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'discrete_pid'.
 //
-// Model version                  : 1.16
+// Model version                  : 1.22
 // Simulink Coder version         : 9.0 (R2018b) 24-May-2018
-// C/C++ source code generated on : Sat Mar 14 15:23:36 2020
+// C/C++ source code generated on : Mon Mar 23 19:10:56 2020
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: Atmel->AVR (8-bit)
@@ -72,7 +72,7 @@ preprocessor word size checks.
 // Model step function
 void discrete_pid_coderino_simuModelClass::step()
 {
-  int16_T rtb_Sum;
+  int16_T rtb_Saturation;
   int16_T rtb_ProportionalGain;
   int16_T rtb_IntegralGain;
   int16_T rtb_IntegralGain_j;
@@ -81,81 +81,24 @@ void discrete_pid_coderino_simuModelClass::step()
   int16_T Integrator;
   int16_T Integrator_f;
 
-  // Sum: '<Root>/Add' incorporates:
-  //   Inport: '<Root>/ENC_Pos'
-  //   Inport: '<Root>/Set_Point '
+  // Sum: '<Root>/PositionSubtractor' incorporates:
+  //   DiscreteIntegrator: '<Root>/VelocityIntegrator'
+  //   Inport: '<Root>/measuredPosition'
 
-  rtb_Sum = rtU.Set_Point - rtU.ENC_Pos;
-
-  // Gain: '<S74>/Proportional Gain'
-  rtb_ProportionalGain = 20 * rtb_Sum;
-
-  // Gain: '<S47>/Integral Gain'
-  rtb_IntegralGain = 5 * rtb_Sum;
-
-  // DiscreteIntegrator: '<S57>/Integrator'
-  Integrator = rtDW.Integrator_DSTATE + rtb_IntegralGain;
-
-  // Gain: '<S34>/Derivative Gain'
-  rtb_Sum <<= 4;
-
-  // SampleTimeMath: '<S36>/TSamp'
-  //
-  //  About '<S36>/TSamp':
-  //   y = u * K where K = 1 / ( w * Ts )
-  //   Multiplication by K = weightedTsampQuantized is being
-  //   done implicitly by changing the scaling of the input signal.
-  //   No work needs to be done here.  Downstream blocks may need
-  //   to do work to handle the scaling of the output; this happens
-  //   automatically.
-
-  rtb_TSamp = rtb_Sum;
-
-  // Sum: '<S36>/Diff' incorporates:
-  //   Delay: '<S36>/UD'
-  //   SampleTimeMath: '<S36>/TSamp'
-  //
-  //  About '<S36>/TSamp':
-  //   y = u * K where K = 1 / ( w * Ts )
-  //   Multiplication by K = weightedTsampQuantized is being
-  //   done implicitly by changing the scaling of the input signal.
-  //   No work needs to be done here.  Downstream blocks may need
-  //   to do work to handle the scaling of the output; this happens
-  //   automatically.
-
-  rtb_Sum -= rtDW.UD_DSTATE;
-
-  // Sum: '<S87>/Sum'
-  rtb_Sum = ((int16_T)((Integrator * 13107L) >> 17) + rtb_ProportionalGain) +
-    (int16_T)(rtb_Sum * 5L);
-
-  // Saturate: '<S78>/Saturation'
-  if (rtb_Sum > 108) {
-    rtb_Sum = 108;
-  } else {
-    if (rtb_Sum < -108) {
-      rtb_Sum = -108;
-    }
-  }
-
-  // End of Saturate: '<S78>/Saturation'
-
-  // Sum: '<Root>/Add1' incorporates:
-  //   Inport: '<Root>/ADC_VAL'
-
-  rtb_Sum -= rtU.ADC_VAL;
+  rtb_Saturation = (rtDW.VelocityIntegrator_DSTATE * 4295L < 0L ? -1 : 0) -
+    rtU.measuredPosition;
 
   // Gain: '<S170>/Proportional Gain'
-  rtb_ProportionalGain = 20 * rtb_Sum;
+  rtb_ProportionalGain = 20 * rtb_Saturation;
 
   // Gain: '<S143>/Integral Gain'
-  rtb_IntegralGain_j = 5 * rtb_Sum;
+  rtb_IntegralGain = 5 * rtb_Saturation;
 
   // DiscreteIntegrator: '<S153>/Integrator'
-  Integrator_f = rtDW.Integrator_DSTATE_f + rtb_IntegralGain_j;
+  Integrator = rtDW.Integrator_DSTATE + rtb_IntegralGain;
 
   // Gain: '<S130>/Derivative Gain'
-  rtb_Sum <<= 4;
+  rtb_Saturation <<= 4;
 
   // SampleTimeMath: '<S132>/TSamp'
   //
@@ -167,12 +110,11 @@ void discrete_pid_coderino_simuModelClass::step()
   //   to do work to handle the scaling of the output; this happens
   //   automatically.
 
-  rtb_TSamp_g = rtb_Sum;
+  rtb_TSamp = rtb_Saturation;
 
-  // Sum: '<S183>/Sum' incorporates:
+  // Sum: '<S132>/Diff' incorporates:
   //   Delay: '<S132>/UD'
   //   SampleTimeMath: '<S132>/TSamp'
-  //   Sum: '<S132>/Diff'
   //
   //  About '<S132>/TSamp':
   //   y = u * K where K = 1 / ( w * Ts )
@@ -182,33 +124,113 @@ void discrete_pid_coderino_simuModelClass::step()
   //   to do work to handle the scaling of the output; this happens
   //   automatically.
 
-  rtb_Sum = ((int16_T)((Integrator_f * 13107L) >> 17) + rtb_ProportionalGain) +
-    (int16_T)((rtb_Sum - rtDW.UD_DSTATE_p) * 5L);
+  rtb_Saturation -= rtDW.UD_DSTATE;
+
+  // Sum: '<S183>/Sum'
+  rtb_Saturation = ((Integrator * 4295L < 0L ? -1 : 0) + rtb_ProportionalGain) +
+    (int16_T)(rtb_Saturation * 2000000LL);
 
   // Saturate: '<S174>/Saturation'
-  if (rtb_Sum > 255) {
-    // Outport: '<Root>/PID_OUT'
-    rtY.PID_OUT = 255;
-  } else if (rtb_Sum < 0) {
-    // Outport: '<Root>/PID_OUT'
-    rtY.PID_OUT = 0;
+  if (rtb_Saturation > 108) {
+    rtb_Saturation = 108;
   } else {
-    // Outport: '<Root>/PID_OUT'
-    rtY.PID_OUT = rtb_Sum;
+    if (rtb_Saturation < -108) {
+      rtb_Saturation = -108;
+    }
   }
 
   // End of Saturate: '<S174>/Saturation'
 
-  // Update for DiscreteIntegrator: '<S57>/Integrator'
-  rtDW.Integrator_DSTATE = Integrator + rtb_IntegralGain;
+  // Sum: '<Root>/CurrentSubtractor' incorporates:
+  //   Inport: '<Root>/currentMeasurement'
 
-  // Update for Delay: '<S36>/UD'
-  rtDW.UD_DSTATE = rtb_TSamp;
+  rtb_Saturation -= rtU.currentMeasurement;
+
+  // Gain: '<S74>/Proportional Gain'
+  rtb_ProportionalGain = 20 * rtb_Saturation;
+
+  // Gain: '<S47>/Integral Gain'
+  rtb_IntegralGain_j = 5 * rtb_Saturation;
+
+  // DiscreteIntegrator: '<S57>/Integrator'
+  Integrator_f = rtDW.Integrator_DSTATE_f + rtb_IntegralGain_j;
+
+  // Gain: '<S34>/Derivative Gain'
+  rtb_Saturation <<= 4;
+
+  // SampleTimeMath: '<S36>/TSamp'
+  //
+  //  About '<S36>/TSamp':
+  //   y = u * K where K = 1 / ( w * Ts )
+  //   Multiplication by K = weightedTsampQuantized is being
+  //   done implicitly by changing the scaling of the input signal.
+  //   No work needs to be done here.  Downstream blocks may need
+  //   to do work to handle the scaling of the output; this happens
+  //   automatically.
+
+  rtb_TSamp_g = rtb_Saturation;
+
+  // Sum: '<S87>/Sum' incorporates:
+  //   Delay: '<S36>/UD'
+  //   SampleTimeMath: '<S36>/TSamp'
+  //   Sum: '<S36>/Diff'
+  //
+  //  About '<S36>/TSamp':
+  //   y = u * K where K = 1 / ( w * Ts )
+  //   Multiplication by K = weightedTsampQuantized is being
+  //   done implicitly by changing the scaling of the input signal.
+  //   No work needs to be done here.  Downstream blocks may need
+  //   to do work to handle the scaling of the output; this happens
+  //   automatically.
+
+  rtb_Saturation = ((Integrator_f * 4295L < 0L ? -1 : 0) + rtb_ProportionalGain)
+    + (int16_T)((rtb_Saturation - rtDW.UD_DSTATE_p) * 2000000LL);
+
+  // Saturate: '<S78>/Saturation'
+  if (rtb_Saturation > 255) {
+    rtb_Saturation = 255;
+  } else {
+    if (rtb_Saturation < 0) {
+      rtb_Saturation = 0;
+    }
+  }
+
+  // End of Saturate: '<S78>/Saturation'
+
+  // Switch: '<Root>/Switch' incorporates:
+  //   Constant: '<Root>/Constant'
+
+  if (rtb_Saturation <= 0) {
+    rtb_Saturation = 0;
+  }
+
+  // End of Switch: '<Root>/Switch'
+
+  // Outport: '<Root>/motorDutyA' incorporates:
+  //   Gain: '<Root>/Gain'
+
+  rtY.motorDutyA = 0.00390625 * (real_T)rtb_Saturation;
+
+  // Outport: '<Root>/motorDutyB' incorporates:
+  //   Gain: '<Root>/Gain1'
+
+  rtY.motorDutyB = 0.0;
+
+  // Update for DiscreteIntegrator: '<Root>/VelocityIntegrator' incorporates:
+  //   Inport: '<Root>/desiredVelocity'
+
+  rtDW.VelocityIntegrator_DSTATE += rtU.desiredVelocity;
 
   // Update for DiscreteIntegrator: '<S153>/Integrator'
-  rtDW.Integrator_DSTATE_f = Integrator_f + rtb_IntegralGain_j;
+  rtDW.Integrator_DSTATE = Integrator + rtb_IntegralGain;
 
   // Update for Delay: '<S132>/UD'
+  rtDW.UD_DSTATE = rtb_TSamp;
+
+  // Update for DiscreteIntegrator: '<S57>/Integrator'
+  rtDW.Integrator_DSTATE_f = Integrator_f + rtb_IntegralGain_j;
+
+  // Update for Delay: '<S36>/UD'
   rtDW.UD_DSTATE_p = rtb_TSamp_g;
 }
 

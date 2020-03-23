@@ -144,7 +144,7 @@ Output entry point of generated code
 Timing
 </td>
 <td width="75%" align="left" valign="top">
-Must be called periodically, every 0.2 seconds
+Must be called periodically, every 5e-07 seconds
 </td>
 
 </tr>
@@ -213,7 +213,7 @@ Dimension
 </tr>
 <tr class="even">
 <td width="42%" align="left" valign="top">
-<a href="matlab:coder.internal.code2model('discrete_pid:31')" name="code2model" class="code2model">&lt;Root&gt;/Set_Point </a>
+<a href="matlab:coder.internal.code2model('discrete_pid:31')" name="code2model" class="code2model">&lt;Root&gt;/desiredVelocity</a>
 </td>
 <td width="26%" align="left" valign="top">
 <i>
@@ -222,7 +222,7 @@ Defined externally
 
 </td>
 <td width="21%" align="left" valign="top">
-uint8_T
+int16_T
 </td>
 <td width="10%" align="right" valign="top">
 1
@@ -231,7 +231,7 @@ uint8_T
 </tr>
 <tr class="odd">
 <td width="42%" align="left" valign="top">
-<a href="matlab:coder.internal.code2model('discrete_pid:32')" name="code2model" class="code2model">&lt;Root&gt;/ENC_Pos</a>
+<a href="matlab:coder.internal.code2model('discrete_pid:32')" name="code2model" class="code2model">&lt;Root&gt;/measuredPosition</a>
 </td>
 <td width="26%" align="left" valign="top">
 <i>
@@ -240,7 +240,7 @@ Defined externally
 
 </td>
 <td width="21%" align="left" valign="top">
-uint8_T
+int16_T
 </td>
 <td width="10%" align="right" valign="top">
 1
@@ -249,7 +249,7 @@ uint8_T
 </tr>
 <tr class="even">
 <td width="42%" align="left" valign="top">
-<a href="matlab:coder.internal.code2model('discrete_pid:39')" name="code2model" class="code2model">&lt;Root&gt;/ADC_VAL</a>
+<a href="matlab:coder.internal.code2model('discrete_pid:39')" name="code2model" class="code2model">&lt;Root&gt;/currentMeasurement</a>
 </td>
 <td width="26%" align="left" valign="top">
 <i>
@@ -303,7 +303,7 @@ Dimension
 </tr>
 <tr class="even">
 <td width="42%" align="left" valign="top">
-<a href="matlab:coder.internal.code2model('discrete_pid:42')" name="code2model" class="code2model">&lt;Root&gt;/PID_OUT</a>
+<a href="matlab:coder.internal.code2model('discrete_pid:42')" name="code2model" class="code2model">&lt;Root&gt;/motorDutyA</a>
 </td>
 <td width="26%" align="left" valign="top">
 <i>
@@ -312,7 +312,25 @@ Defined externally
 
 </td>
 <td width="21%" align="left" valign="top">
-int16_T
+real_T
+</td>
+<td width="10%" align="right" valign="top">
+1
+</td>
+
+</tr>
+<tr class="odd">
+<td width="42%" align="left" valign="top">
+<a href="matlab:coder.internal.code2model('discrete_pid:53')" name="code2model" class="code2model">&lt;Root&gt;/motorDutyB</a>
+</td>
+<td width="26%" align="left" valign="top">
+<i>
+Defined externally
+</i>
+
+</td>
+<td width="21%" align="left" valign="top">
+real_T
 </td>
 <td width="10%" align="right" valign="top">
 1

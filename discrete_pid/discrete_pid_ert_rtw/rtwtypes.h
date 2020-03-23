@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'discrete_pid'.
 //
-// Model version                  : 1.16
+// Model version                  : 1.22
 // Simulink Coder version         : 9.0 (R2018b) 24-May-2018
-// C/C++ source code generated on : Sat Mar 14 15:23:36 2020
+// C/C++ source code generated on : Mon Mar 23 19:10:56 2020
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: Atmel->AVR (8-bit)
@@ -48,6 +48,7 @@
 //  Fixed width word size data types:                                     *
 //    int8_T, int16_T, int32_T     - signed 8, 16, or 32 bit integers     *
 //    uint8_T, uint16_T, uint32_T  - unsigned 8, 16, or 32 bit integers   *
+//    real32_T, real64_T           - 32 and 64 bit floating point numbers *
 // =======================================================================
 typedef signed char int8_T;
 typedef unsigned char uint8_T;
@@ -57,11 +58,15 @@ typedef long int32_T;
 typedef unsigned long uint32_T;
 typedef long long int64_T;
 typedef unsigned long long uint64_T;
+typedef float real32_T;
+typedef double real64_T;
 
 //===========================================================================*
 //  Generic type definitions: boolean_T, char_T, byte_T, int_T, uint_T,       *
-//                            ulong_T, ulonglong_T.                           *
+//                            real_T, time_T, ulong_T, ulonglong_T.           *
 // ===========================================================================
+typedef double real_T;
+typedef double time_T;
 typedef unsigned char boolean_T;
 typedef int int_T;
 typedef unsigned int uint_T;

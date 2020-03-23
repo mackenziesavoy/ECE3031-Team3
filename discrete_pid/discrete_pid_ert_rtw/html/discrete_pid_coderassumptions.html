@@ -72,6 +72,24 @@ BitPerLongLong
 </tr>
 <tr class="odd">
 <td align="left" valign="top">
+BitPerFloat
+</td>
+<td align="left" valign="top">
+32
+</td>
+
+</tr>
+<tr class="even">
+<td align="left" valign="top">
+BitPerDouble
+</td>
+<td align="left" valign="top">
+64
+</td>
+
+</tr>
+<tr class="odd">
+<td align="left" valign="top">
 BitPerPointer
 </td>
 <td align="left" valign="top">
@@ -163,6 +181,48 @@ True
 </p>
 <p>
 If the assumption is not correct, remove the optimization through the <a href="matlab:configset.showParameterGroup('discrete_pid',{'Optimization'})">Configuration Parameters > Code Generation > Optimization</a> settings. Alternatively, configure your target environment to make the assumption hold.
+</p>
+
+</td>
+
+</tr>
+
+</table>
+<h3 name="sec_Floating-Point_Numbers" id="sec_Floating-Point_Numbers">
+Floating-Point Numbers
+</h3>
+<table width="100%" border="0">
+<tr>
+<td align="left" valign="top">
+<p>
+Code generation is configured to support floating-point numbers, therefore your target environment might perform subnormal number calculations.
+</p>
+<p>
+<table class="AltRow" cellspacing="0">
+<tr class="even">
+<td align="left" valign="top">
+Flush-to-zero computed subnormal values (FTZ)
+</td>
+<td align="left" valign="top">
+False
+</td>
+
+</tr>
+<tr class="odd">
+<td align="left" valign="top">
+Flush-to-zero incoming subnormal values (DAZ)
+</td>
+<td align="left" valign="top">
+False
+</td>
+
+</tr>
+
+</table>
+
+</p>
+<p>
+If the assumptions are not correct, subnormal numbers might cause mismatches between model and generated code simulation results.  For more information see, <a href="matlab:helpview(fullfile(docroot,'toolbox','ecoder','helptargets.map'),'subnormal_numbers_performance')">Subnormal Number Performance</a>.
 </p>
 
 </td>
