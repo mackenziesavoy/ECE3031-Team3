@@ -1,9 +1,8 @@
 # ECE3031 AFP-Team3
-So far this repositor includes:
-
-* Discrete PID Control implemented via MATLAB® Simulink™
-
-* ATmega328PB High PWM generation test 
+## Beta 1.0
+This is the first stable push of the firmware for the group 3 adaptaive feeding project
+[the current source of the project can be found here] (../blob/master/ATMega238PB%20Test/atmega328ptesterino2/atmega328ptesterino2.ino)
+the current PCB Schematic can be found here
 
 ![alt text][uml]
 
