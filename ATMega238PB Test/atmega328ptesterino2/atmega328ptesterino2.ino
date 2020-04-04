@@ -1,6 +1,11 @@
+#include <ST7036.h>
+#include <LCD_C0220BiZ.h>
+#include <lcd.h>
 #include <SPI.h>
 #include <SRAM_23LC.h>
 #include <Encoder.h>
+
+#define DOUBLE_CLICK_TIME 1000
 
 volatile uint8_t adcCount = 0;
 volatile uint16_t adcMeas = 0;
@@ -35,28 +40,13 @@ private:
 	const pidGain_t posGain = { 2, 6, 10 }; // These values are fractions of 256
 	const pidGain_t curGain = { 1, 10, 1 }; // This is due to a right-shift in the code
 
-    struct {
-        int16_t VelocityIntegrator_DSTATE;
-        int16_t UD_DSTATE;
-        int16_t UD_DSTATE_p;
-        int16_t Integrator_DSTATE;
-        int16_t Integrator_DSTATE_f;
-    } rtDW;
+	int16_t posIntegral = 0; // Left these outside of pidStep to allow resetting of integral windup
+	int16_t curIntegral = 0;
 
     // Model step function
-    void pidStep()
-    {
+    void pidStep() {
 		if (adcCount == 0)
 			return; // If we don't have new data we can't do anything
-
-        int16_t error;
-        int16_t rtb_ProportionalGain;
-        int16_t rtb_IntegralGain;
-        int16_t rtb_IntegralGain_j;
-        int16_t rtb_tSamp;
-        int16_t rtb_tSamp_g;
-        int16_t Integrator;
-        int16_t Integrator_f;
 
 		// Disable interrupts and determine the time since last step
 		uint8_t s = SREG;
@@ -69,7 +59,6 @@ private:
 		static int16_t prevPosError = 0; // For derivative
         int16_t posError = targetPosition - motorEncoder.read(); // Calculate error
 		int16_t posProportional = posError * posGain.kp; // Calculate proportional response
-		static int16_t posIntegral = 0; // For integral
 		posIntegral += posError * posGain.ki * timeStep; // Calculate integral response
 		int16_t posDerivative = ((posError - prevPosError) * posGain.kd) / timeStep; // Calculate derivative response
 		int16_t desiredCurrent = posProportional + posIntegral + posDerivative; // Sum responses
@@ -86,62 +75,19 @@ private:
 		static int16_t prevCurError = 0; // For derivative
 		int16_t curError = desiredCurrent - currentMeasurement; // Calculate error
 		int16_t curProportional = curError * curGain.kp; // Calculate proportional response
-		static int16_t curIntegral = 0; // For integral
 		curIntegral += curError * curGain.ki * timeStep; // Calculate integral response
 		int16_t curDerivative = ((curError - prevCurError) * curGain.kd) / timeStep; // Calculate derivative reponse
-		int16_t desiredCurrent = curProportional + curIntegral + curDerivative; // Sum responses
+		int16_t desiredDuty = curProportional + curIntegral + curDerivative; // Sum responses
 		prevCurError = curError; // Save this error for next iteration
 
-		if (desiredCurrent > 0) {
-			if (desiredCurrent > (0xFFFF >> 6))
-				desiredCurrent = (0xFFFF >> 6);
-			OCR1AL = ( >> 6);
+		if (desiredDuty >= 0) {
+			OCR1AL = 0xFF - (desiredDuty >> 7); // Scale down to 8-bit
+			OCR1BL = 0xFF; // Output is 0
 		}
 		else {
-
+			OCR1AL = 0xFF; // Output is 0
+			OCR1BL = 0xFF - ((-desiredDuty - 1) >> 7); // Scale down to 8-bit
 		}
-		
-
-        rtb_ProportionalGain = 20 * error;
-        rtb_IntegralGain = 5 * error;
-        Integrator = rtDW.Integrator_DSTATE + rtb_IntegralGain;
-        error <<= 4;
-        rtb_tSamp = error;
-        error -= rtDW.UD_DSTATE;
-        error = ((Integrator * 4295L < 0L ? -1 : 0) + rtb_ProportionalGain) +
-            (int16_t)(error * 2000000LL);
-        if (error > 108) {
-            error = 108;
-        }
-        else if (error < -108) {
-			error = -108;
-        }
-        error -= getADC();
-        rtb_ProportionalGain = 20 * error;
-        rtb_IntegralGain_j = 5 * error;
-        Integrator_f = rtDW.Integrator_DSTATE_f + rtb_IntegralGain_j;
-        error <<= 4;
-        rtb_tSamp_g = error;
-        error = ((Integrator_f * 4295L < 0L ? -1 : 0) + rtb_ProportionalGain)
-            + (int16_t)((error - rtDW.UD_DSTATE_p) * 2000000LL);
-        if (error > 255) {
-            error = 255;
-        }
-        else {
-            if (error < 0) {
-                error = 0;
-            }
-        }
-        if (error <= 0) {
-            error = 0;
-        }
-        rtY.motorDutyA = 0.00390625 * error;
-        rtY.motorDutyB = 0.0;
-        rtDW.VelocityIntegrator_DSTATE += rtU.desiredVelocity;
-        rtDW.Integrator_DSTATE = Integrator + rtb_IntegralGain;
-        rtDW.UD_DSTATE = rtb_tSamp;
-        rtDW.Integrator_DSTATE_f = Integrator_f + rtb_IntegralGain_j;
-        rtDW.UD_DSTATE_p = rtb_tSamp_g;
     }
 
 	void integrateSpeed() { // This calculates an integral using only integers
@@ -205,19 +151,118 @@ public:
 		if (ADCSRA & (1 << ADIF)) { // if current reading is available do the stuff, otherwise just return
 			ADCSRA &= !(1 << ADIF); // clear data available flag
 			integrateSpeed(); // Update targetPosition for this step
-
-			// Blah blah calculate values for OCR1AL and OCR1BL based on those two inputs and targetPosition
+			pidStep(); // Update the motor outputs
+#ifdef __AVR_atmega328pb__
+			saveState();
+#endif
 		}
+	}
+
+	void saveState() {
+		sram.writeByte(0x0000, motorEncoder.read()); // In case we lose power
+	}
+
+	void stop() {
+		setSpeed(0); // Make sure we aren't changing our target
+		targetPosition = motorEncoder.read(); // Make sure our new target is where we already are
+		posIntegral = 0; // Reset internal control integrals so we don't see windup effect
+		curIntegral = 0;
 	}
 
 	void setSpeed(int32_t target) {
 		targetSpeed = target;
 	}
 
+	void incSpeed() {
+		setSpeed(targetSpeed + 1);
+	}
+
+	void decSpeed() {
+		setSpeed(targetSpeed - 1);
+	}
+
+	uint32_t getPos() {
+		return motorEncoder.read();
+	}
+
+	int16_t getCurIntegralMag() {
+		if (curIntegral < 0)
+			return -curIntegral;
+		else
+			return curIntegral;
+	}
+
     void calibrate() {
         motorEncoder.write(0);
         sram.writeByte(0x0000, 0);
     }
+};
+
+class LEDdriver {
+private:
+	typedef struct backlight {
+		uint8_t red, green, blue;
+	} backlight_t;
+
+	typedef struct ledstate {
+		uint8_t fill;
+		uint8_t feed;
+		uint8_t inc;
+		uint8_t dec;
+		uint8_t stop;
+		backlight_t lcd;
+	} ledstate_t;
+
+	ledstate_t ledstate = { LOW, LOW, LOW, LOW, LOW, { LOW, LOW, LOW } };
+
+public:
+	LEDdriver() {
+		PORTE &= ~(1 << DDRE0);
+		DDRE |= (1 << DDRE0);
+	}
+	void writeFill(uint8_t fill_val) {
+		ledstate.fill = fill_val;
+	}
+	void writeFeed(uint8_t feed_val) {
+		ledstate.feed = feed_val;
+	}
+	void writeInc(uint8_t inc_val) {
+		ledstate.inc = inc_val;
+	}
+	void writeDec(uint8_t dec_val) {
+		ledstate.dec = dec_val;
+	}
+	void writeStop(uint8_t stop_val) {
+		ledstate.stop = stop_val;
+	}
+	void writeRed(uint8_t red_val) {
+		ledstate.lcd.red = red_val;
+	}
+	void writeGreen(uint8_t green_val) {
+		ledstate.lcd.green = green_val;
+	}
+	void writeBlue(uint8_t blue_val) {
+		ledstate.lcd.blue = blue_val;
+	}
+
+	void update() {
+		uint8_t updated_data = 0;
+		// Sending the LED values as fast as possible
+		SPI.beginTransaction(SPISettings(8000000, LSBFIRST, SPI_MODE0));
+		updated_data |= ledstate.stop;
+		updated_data |= (ledstate.inc << 1);
+		updated_data |= (ledstate.dec << 2);
+		updated_data |= (ledstate.feed << 3);
+		updated_data |= (ledstate.fill << 4);
+		updated_data |= (ledstate.lcd.red << 5);
+		updated_data |= (ledstate.lcd.green << 6);
+		updated_data |= (ledstate.lcd.blue << 7);
+		SPI.transfer(updated_data);
+		SPI.transfer(0x00);
+		SPI.endTransaction();
+		PORTE |= ~(1 << PORTE0);
+		PORTE &= ~(1 << PORTE0);
+	}
 };
 
 class Button {
@@ -263,54 +308,239 @@ public:
 	}
 };
 
-void adc_init() {
-	ADCSRB = (1 << ADTS2); // Automatic conversion trigger from Timer0 overflow every 1.024ms
-#ifdef __AVR_atmega328pb__
-	DIDR0 = 0x80; // When using ATmega328PB, disable channel 7 digital buffer for power reduction
-#endif
-	ADMUX = (1 << ADLAR) | (7 << MUX0); // Right-adjust conversion results and use channel 7
-	// Enable ADC, start converting, enable continuous conversion, and set prescale to mode 7 (128)
-	ADCSRA = (1 << ADEN) | (1 << ADSC) | (1 << ADATE) | (7 << ADPS0);
-}
-
-void uart0_init() {
-#define BAUD 9600
-#include <util/setbaud.h> // This calculates proper UBRR values
-	UBRR0L = UBRRL_VALUE;
-	UBRR0H = UBRRH_VALUE;
-}
-
-void disable_unused_periph() {
-	// For the sake of power reduction and noise reduction, disable all unused peripherals
-	// This notable will prevent timers 2, 3, and 4 from operating, but they aren't used for anything
-#ifdef __AVR_HAVE_PRR0
-	PRR0 = (1 << PRTIM2) | (1 << PRUSART1);
-#endif
-#ifdef __AVR_HAVE_PRR1
-	PRR1 = (1 << PRTWI1) | (1 << PRPTC) | (1 << PRTIM4) | (1 << PRSPI1) | (1 << PRTIM3);
-#endif
-#ifdef __ AVR_HAVE_PRR
-	PRR = (1 << PRTIM2);
-#endif
-}
-
-Button fill(4, 25);
+Button fill(4, 25); // Create button drivers that handle debounce and double-click functionality
 Button feed(14, 25);
 Button speed_inc(16, 25);
 Button speed_dec(17, 25);
 Button stop(15, 25);
 
-MotorDriver motor();
+MotorDriver motor; // Create the MotorDriver object
+
+LCD_C0220BIZ display; // Create the LCD object
+
+LEDdriver leds; // Create the LED object
 
 void setup()
 {
-	disable_unused_periph();
-	tc1_init();
-	adc_init();
-	DDRB |= (1 << 5);
+	SPI.begin(); // Initialize SPI
+	Serial.begin(9600); // Because why not
+	display.init(); // Initialize display
+	DDRE |= (1 << DDRE1); // Buzzer is output
 }
 
-void loop() {
-	PORTB ^= (1 << 5); // Toggle PB5
+typedef enum direction {
+	STOPPED = 0,
+	FILLING,
+	DISPENSING
+} direction_t;
 
+typedef enum mode {
+	MANUAL = 0,
+	AUTO
+} mode_t;
+
+typedef enum fault {
+	NONE = 0,
+	STALLED
+} fault_t;
+
+typedef struct timer {
+	uint8_t ten_minutes;
+	uint8_t one_minutes;
+	uint8_t ten_seconds;
+	uint8_t one_seconds;
+} timer_t;
+
+void loop() {
+	static int16_t user_speed = 1; // Speed that the user wants
+	static direction_t direction = STOPPED; // Current desired motor direction
+	static mode_t mode = MANUAL; // Current locomotion mode
+	static uint32_t last_lcd_update = 0; // Time of last LCD update to make sure we don't waste time on it
+	static fault_t fault_status = NONE; // Keep track of fault status
+	static uint32_t buzzerStart = 0; // To limit buzzer loudness
+	static uint8_t buzzing = 0; // Buzzer status
+
+	// Update motor internal tickery
+	if (fault_status == STALLED) {
+		user_speed = 1;
+	}
+	if (direction == FILLING)
+		motor.setSpeed(user_speed);
+	else if (direction == DISPENSING)
+		motor.setSpeed(-user_speed);
+	else
+		motor.stop();
+	motor.step();
+
+	// Update button internal tickery
+	unsigned long curTime = millis();
+	fill.step(curTime);
+	feed.step(curTime);
+	speed_inc.step(curTime);
+	speed_dec.step(curTime);
+	stop.step(curTime);
+
+	// Motor fault detection is tripped when the integral portion of the
+	// current control blows way out of proportion. Device will reverse
+	// at the lowest speed setting and remain in that state until the
+	// magnitude of the integral goes below 10% of the trip limit
+	// Also calibrate if we hit the feed end stop and just stop if
+	// we hit the fill limit.
+	if (motor.getCurIntegralMag() > 10000) {
+		if (PORTD & (1 << PORTD7) != 0) {
+			motor.stop();
+			motor.calibrate();
+		}
+		else if (PORTD & (1 << PORTD6) != 0) {
+			motor.stop();
+		}
+		else {
+			if (fault_status != STALLED)
+				direction = ((direction == FILLING) ? DISPENSING : FILLING);
+			fault_status = STALLED;
+		}
+	}
+	else if (motor.getCurIntegralMag() < 1000)
+		fault_status = NONE;
+
+#ifdef __AVR_atmega328pb__
+	if (PORTD & ((1 << PORTD7) | (1 << PORTD6)) != 0) {
+		if (buzzing == 0) {
+			buzzerStart = millis();
+			buzzing = 1;
+			PORTE |= (1 << PORTE1);
+		}
+		else if (millis() - buzzerStart > 350) {
+			buzzing = 2;
+			PORTE &= ~(1 << PORTE1);
+		}
+	}
+#endif
+
+	if (stop.getState() == 0) {
+		direction = STOPPED;
+	}
+	else {
+		if (fill.getState() == 0) {
+			direction = DISPENSING; // Dispensing food (direction is negative)
+			if (fill.getClickDelta() < DOUBLE_CLICK_TIME)
+				mode = AUTO;
+			else
+				mode = MANUAL;
+		}
+		else if (fill.getState() == 1) {
+			if (mode == MANUAL)
+				direction = STOPPED;
+		}
+
+		if (feed.getState() == 0) {
+			direction = FILLING; // Filling food (direction is positive)
+			if (feed.getClickDelta() < DOUBLE_CLICK_TIME)
+				mode = AUTO;
+			else
+				mode = MANUAL;
+		}
+		else if (feed.getState() == 1) {
+			if (mode == MANUAL)
+				direction = STOPPED;
+		}
+
+		if (speed_inc.getState() == 0) {
+			if(user_speed < 32767)
+				user_speed++;
+			leds.writeInc(HIGH);
+		}
+		else {
+			leds.writeInc(LOW);
+		}
+
+		if (speed_dec.getState() == 0) {
+			if(user_speed > 1)
+				user_speed--;
+			leds.writeDec(HIGH);
+		}
+		else{
+			leds.writeDec(LOW);
+	}
+
+	if (fault_status == STALLED) {
+		leds.writeStop(HIGH);
+		leds.writeFeed(HIGH);
+		leds.writeFill(HIGH);
+		leds.writeBlue(LOW);
+		leds.writeRed(HIGH);
+		leds.writeGreen(LOW);
+	}
+	else if (direction == STOPPED) {
+		leds.writeStop(HIGH);
+		leds.writeFeed(LOW);
+		leds.writeFill(LOW);
+		leds.writeBlue(HIGH);
+		leds.writeRed(HIGH);
+		leds.writeGreen(HIGH);
+	}
+	else {
+		if (direction == FILLING) {
+			leds.writeFill(HIGH);
+			leds.writeFeed(LOW);
+		}
+		else {
+			leds.writeFeed(HIGH);
+			leds.writeFill(LOW);
+		}
+		leds.writeStop(LOW);
+		leds.writeBlue(HIGH);
+		leds.writeRed(HIGH);
+		leds.writeGreen(HIGH);
+	}
+
+	// Updating the display (200ms means 5Hz update rate, close to the limit of the module)
+	if ((millis() - last_lcd_update) > 200) {
+		display.home(); // Return cursor to top left
+		motor.saveState(); // Save state of the motor just in case it is disabled in driver
+		leds.update(); // Update LED status
+
+		// The following sets up the 6 possible display conditions
+		char topbuffer[17];
+		char botbuffer[17];
+		if (fault_status == STALLED) {
+			strcpy(topbuffer, "  Motor fault   ");
+			strcpy(botbuffer, "  Service unit  ");
+		}
+		else {
+			char time[6];
+			strcpy(topbuffer, "Time: ");
+
+			// This calculates time remaining using the desired speed and the current position
+			int32_t time_remaining = motor.getPos() / user_speed * 2 / 31; // There are 15.5*user_speed encoder steps per second
+			if (time_remaining < 0)
+				time_remaining = 0;
+
+			// Now calculate all the numbers and add 0x30 to make them ASCII
+			time[0] = (time_remaining / 600) + 0x30;
+			time[1] = ((time_remaining % 600) / 60) + 0x30;
+			time[2] = ':';
+			time[3] = ((time_remaining % 60) / 10) + 0x30;
+			time[4] = (time_remaining % 10) + 0x30;
+			time[5] = 0;
+
+			strcat(topbuffer, time);
+
+			if (mode == MANUAL)
+				strcat(topbuffer, " MAN.");
+			else if (mode == AUTO)
+				strcat(topbuffer, " AUTO");
+
+			else if (direction == STOPPED)
+				strcpy(botbuffer, "Ready.      ----");
+			else if (direction == FILLING)
+				strcpy(botbuffer, "Filling.    <---");
+			else if (direction == DISPENSING)
+				strcpy(botbuffer, "Dispensing. --->");
+		}
+
+		display.write((uint8_t*)topbuffer, 16);
+		display.setCursor(1, 0); // Might not need if the auto-advance of the cursor brings us down a line
+		display.write((uint8_t*)botbuffer, 16);
+	}
 }

@@ -11,4 +11,18 @@ C:\Users\macke\AppData\Local\Temp\VMBuilds\atmega328ptesterino2\MiniCore_328\Deb
  C:\Users\macke\AppData\Local\arduino15\packages\MiniCore\hardware\avr\2.0.3\cores\MCUdude_corefiles/USBAPI.h \
  C:\Users\macke\AppData\Local\arduino15\packages\MiniCore\hardware\avr\2.0.3\cores\MCUdude_corefiles/Arduino.h \
  C:\Users\macke\AppData\Local\arduino15\packages\MiniCore\hardware\avr\2.0.3\cores\MCUdude_corefiles/wiring_extras.h \
- C:\Users\macke\AppData\Local\arduino15\packages\MiniCore\hardware\avr\2.0.3\variants\pb-variant/pins_arduino.h
+ C:\Users\macke\AppData\Local\arduino15\packages\MiniCore\hardware\avr\2.0.3\variants\pb-variant/pins_arduino.h \
+ C:\Users\macke\Documents\Arduino\libraries\LCD_C0220BIZ/ST7036.h \
+ C:\Users\macke\AppData\Local\arduino15\packages\MiniCore\hardware\avr\2.0.3\cores\MCUdude_corefiles/Arduino.h \
+ C:\Users\macke\AppData\Local\arduino15\packages\MiniCore\hardware\avr\2.0.3\libraries\Wire\src/Wire.h \
+ C:\Users\macke\AppData\Local\arduino15\packages\MiniCore\hardware\avr\2.0.3\cores\MCUdude_corefiles/Stream.h \
+ C:\Users\macke\AppData\Local\arduino15\packages\MiniCore\hardware\avr\2.0.3\cores\MCUdude_corefiles/Print.h \
+ C:\Users\macke\Documents\Arduino\libraries\LCD_C0220BIZ/LCD.h \
+ C:\Users\macke\Documents\Arduino\libraries\LCD_C0220BIZ/LCD_C0220BiZ.h \
+ C:\Users\macke\Documents\Arduino\libraries\LCD_C0220BIZ/ST7036.h \
+ C:\Users\macke\Documents\Arduino\libraries\LCD_C0220BIZ/lcd.h \
+ C:\Users\macke\AppData\Local\arduino15\packages\MiniCore\hardware\avr\2.0.3\libraries\SPI\src/SPI.h \
+ C:\Users\macke\Documents\Arduino\libraries\SRAM_23LC-1.1.2\src/SRAM_23LC.h \
+ C:\Users\macke\Documents\Arduino\libraries\Encoder-master/Encoder.h \
+ C:\Users\macke\Documents\Arduino\libraries\Encoder-master/utility/direct_pin_read.h \
+ C:\Users\macke\Documents\Arduino\libraries\Encoder-master/utility/interrupt_pins.h
